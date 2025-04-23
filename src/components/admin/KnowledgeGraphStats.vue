@@ -116,13 +116,54 @@ export default {
         const response = await axios.get('/kg/statistics/');
         
         if (response.data.success) {
-          this.statistics = response.data.statistics;
+          // 从API响应中提取数据
+          const data = response.data.data;
+          
+          // 处理节点类型统计
+          const nodes = {};
+          if (data.entityTypes && Array.isArray(data.entityTypes)) {
+            data.entityTypes.forEach(item => {
+              nodes[item.type] = item.count;
+            });
+          }
+          
+          // 处理关系类型统计
+          const relationships = {};
+          if (data.relationTypes && Array.isArray(data.relationTypes)) {
+            data.relationTypes.forEach(item => {
+              relationships[item.type] = item.count;
+            });
+          }
+          
+          // 设置统计数据
+          this.statistics = {
+            nodes: nodes,
+            relationships: relationships,
+            total_nodes: data.entityCount || 0,
+            total_relationships: data.relationCount || 0
+          };
+          
+          console.log('知识图谱统计数据:', this.statistics);
         } else {
           this.error = response.data.message || '获取统计信息失败';
+          // 重置统计数据
+          this.statistics = {
+            nodes: {},
+            relationships: {},
+            total_nodes: 0,
+            total_relationships: 0
+          };
         }
       } catch (error) {
         console.error('获取知识图谱统计信息失败:', error);
         this.error = error.response?.data?.message || '获取统计信息失败，请稍后再试';
+        // 重置统计数据
+        this.statistics = {
+          nodes: {},
+          relationships: {},
+          total_nodes: 0,
+          total_relationships: 0
+        };
       } finally {
         this.loading = false;
       }

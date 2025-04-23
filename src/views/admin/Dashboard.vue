@@ -62,6 +62,11 @@
         <div v-if="currentView === 'system-logs'" class="logs-container">
           <SystemLogs />
         </div>
+        
+        <!-- 用户反馈 -->
+        <div v-if="currentView === 'user-feedback'" class="feedback-container">
+          <UserFeedback />
+        </div>
       </div>
     </div>
   </div>
@@ -73,6 +78,7 @@ import KnowledgeGraphVisualization from '@/components/admin/KnowledgeGraphVisual
 import KnowledgeGraphUpdate from '@/components/admin/KnowledgeGraphUpdate.vue';
 import UserLogs from '@/components/admin/UserLogs.vue';
 import SystemLogs from '@/components/admin/SystemLogs.vue';
+import UserFeedback from '@/components/admin/UserFeedback.vue';
 
 export default {
   name: 'AdminDashboard',
@@ -81,7 +87,8 @@ export default {
     KnowledgeGraphVisualization,
     KnowledgeGraphUpdate,
     UserLogs,
-    SystemLogs
+    SystemLogs,
+    UserFeedback
   },
   data() {
     return {
@@ -92,7 +99,8 @@ export default {
         { id: 'kg-visual', title: '知识图谱可视化', icon: 'el-icon-connection' },
         { id: 'kg-update', title: '知识图谱更新', icon: 'el-icon-refresh' },
         { id: 'user-logs', title: '用户日志', icon: 'el-icon-user' },
-        { id: 'system-logs', title: '系统日志', icon: 'el-icon-monitor' }
+        { id: 'system-logs', title: '系统日志', icon: 'el-icon-monitor' },
+        { id: 'user-feedback', title: '用户反馈', icon: 'el-icon-chat-dot-square' }
       ]
     };
   },
@@ -290,7 +298,8 @@ export default {
 .kg-stats-container,
 .kg-visual-container,
 .kg-update-container,
-.logs-container {
+.logs-container,
+.feedback-container {
   height: 100%;
   background-color: #fff;
   border-radius: 4px;

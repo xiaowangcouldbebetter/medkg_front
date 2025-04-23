@@ -668,8 +668,9 @@ export default {
         // 自动滚动到底部
         this.scrollToBottom();
         
-        const response = await axios.post('http://127.0.0.1:8000/api/qa/', { 
-          question: currentQuestion 
+        const response = await axios.post('/qa/', { 
+          question: currentQuestion,
+          log_query: true // 添加参数指示需要记录日志
         });
 
         // 处理响应
@@ -684,20 +685,40 @@ export default {
           isUser: false,
           timestamp: Date.now()
         });
+        
+        // 记录对话日志
+        this.recordChatLog(currentQuestion, answer, response.data?.success ? 'success' : 'error');
 
       } catch (error) {
         console.error(`请求失败：${error.response?.data?.message || error.message}`);
         // 添加错误消息
+        const errorMessage = '抱歉，连接服务器时遇到了问题。请检查您的网络连接，或稍后再试。';
         this.messages.push({
           id: this.messageId++,
-          text: '抱歉，连接服务器时遇到了问题。请检查您的网络连接，或稍后再试。',
+          text: errorMessage,
           isUser: false,
           timestamp: Date.now()
         });
+        
+        // 记录错误日志
+        this.recordChatLog(currentQuestion, errorMessage, 'error');
       } finally {
         this.isLoading = false;
         // 自动滚动到底部
         this.scrollToBottom();
+      }
+    },
+    
+    // 记录聊天日志
+    async recordChatLog(question, answer, status = 'success') {
+      try {
+        await axios.post('/logs/chat/', {
+          question,
+          answer,
+          status
+        });
+      } catch (error) {
+        console.error('记录聊天日志失败:', error);
       }
     },
     

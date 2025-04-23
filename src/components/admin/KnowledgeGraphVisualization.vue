@@ -85,10 +85,12 @@ export default {
         
         if (response.data.success) {
           const graphData = response.data.data;
-          this.hasData = graphData.nodes?.length > 0;
+          this.hasData = graphData && graphData.nodes && graphData.nodes.length > 0;
           
           if (this.hasData) {
             this.renderNetwork(graphData);
+          } else {
+            console.log('没有知识图谱数据');
           }
         } else {
           this.hasData = false;
@@ -98,9 +100,37 @@ export default {
         console.error('获取知识图谱可视化数据失败:', error);
         this.hasData = false;
         this.error = error.response?.data?.message || '获取可视化数据失败，请稍后再试';
+        
+        // 添加模拟数据，方便测试
+        if (process.env.NODE_ENV === 'development') {
+          console.log('使用模拟数据进行测试');
+          this.useMockData();
+        }
       } finally {
         this.loading = false;
       }
+    },
+    
+    // 添加模拟数据方法
+    useMockData() {
+      const mockData = {
+        nodes: [
+          { id: "疾病1", label: "疾病" },
+          { id: "症状A", label: "症状" },
+          { id: "症状B", label: "症状" },
+          { id: "药物X", label: "药物" },
+          { id: "治疗方法Y", label: "治疗" }
+        ],
+        links: [
+          { source: "疾病1", target: "症状A", relation: "引起" },
+          { source: "疾病1", target: "症状B", relation: "导致" },
+          { source: "药物X", target: "疾病1", relation: "治疗" },
+          { source: "治疗方法Y", target: "疾病1", relation: "适用于" }
+        ]
+      };
+      
+      this.hasData = true;
+      this.renderNetwork(mockData);
     },
     
     generateNodeColor(label) {
@@ -129,79 +159,146 @@ export default {
         this.edges = null;
       }
       
-      // 处理节点数据
-      const nodeData = graphData.nodes.map(node => {
-        const color = this.generateNodeColor(node.label);
-        
-        return {
-          id: node.id,
-          label: node.properties.name || node.id.toString(),
-          title: this.generateNodeTooltip(node),
-          color: {
-            background: color,
-            border: this.darkenColor(color, 0.2),
-            highlight: {
-              background: this.lightenColor(color, 0.2),
-              border: this.darkenColor(color, 0.3)
-            }
-          },
-          font: { color: '#fff' },
-          group: node.label
-        };
-      });
-      
-      // 处理边数据
-      const edgeData = graphData.links.map(link => {
-        return {
-          from: link.source,
-          to: link.target,
-          label: link.type,
-          arrows: 'to',
-          font: { size: 10, align: 'middle' },
-          color: { color: '#aaa', inherit: false }
-        };
-      });
-      
-      // 创建数据集
-      this.nodes = new DataSet(nodeData);
-      this.edges = new DataSet(edgeData);
-      
-      // 网络配置
-      const options = {
-        nodes: {
-          shape: 'dot',
-          size: 20,
-          borderWidth: 2,
-          shadow: true
-        },
-        edges: {
-          width: 1,
-          smooth: { type: 'continuous' }
-        },
-        interaction: {
-          hover: true,
-          navigationButtons: true,
-          keyboard: true
-        },
-        physics: {
-          stabilization: true,
-          barnesHut: {
-            gravitationalConstant: -5000,
-            centralGravity: 0.3,
-            springLength: 150,
-            springConstant: 0.04,
-            damping: 0.09
-          }
+      // 确保DOM已经渲染，且container元素存在
+      this.$nextTick(() => {
+        if (!this.$refs.networkContainer) {
+          console.error('无法找到网络容器元素');
+          this.error = '渲染可视化失败，无法找到容器元素';
+          return;
         }
-      };
-      
-      // 创建网络
-      const container = this.$refs.networkContainer;
-      this.network = new Network(
-        container,
-        { nodes: this.nodes, edges: this.edges },
-        options
-      );
+        
+        try {
+          // 处理节点数据
+          const nodeData = graphData.nodes.map(node => {
+            const color = this.generateNodeColor(node.label);
+            
+            return {
+              id: node.id,
+              label: node.id, // 直接使用id作为标签，因为返回的数据中没有properties.name
+              title: this.generateNodeTooltip(node),
+              color: {
+                background: color,
+                border: this.darkenColor(color, 0.2),
+                highlight: {
+                  background: this.lightenColor(color, 0.2),
+                  border: this.darkenColor(color, 0.3)
+                }
+              },
+              font: { color: '#fff', size: 14, face: 'Arial' },
+              shape: 'dot',
+              size: 30,
+              group: node.label
+            };
+          });
+          
+          // 处理边数据
+          const edgeData = graphData.links.map(link => {
+            return {
+              from: link.source,
+              to: link.target,
+              label: link.relation || '', // 使用relation字段代替type
+              arrows: 'to',
+              font: { size: 12, align: 'middle', multi: true, color: '#555' },
+              color: { color: '#aaa', inherit: false },
+              smooth: { type: 'curvedCW', roundness: 0.2 },
+              width: 1.5
+            };
+          });
+          
+          // 创建数据集
+          this.nodes = new DataSet(nodeData);
+          this.edges = new DataSet(edgeData);
+          
+          // 网络配置 - 模拟Neo4j Browser布局
+          const options = {
+            nodes: {
+              shape: 'dot',
+              size: 30,
+              borderWidth: 2,
+              shadow: true,
+              font: {
+                face: 'Arial'
+              }
+            },
+            edges: {
+              width: 1.5,
+              shadow: true,
+              smooth: { 
+                type: 'curvedCW', 
+                roundness: 0.2 
+              }
+            },
+            interaction: {
+              hover: true,
+              navigationButtons: true,
+              keyboard: true,
+              multiselect: true,
+              tooltipDelay: 300
+            },
+            physics: {
+              enabled: true,
+              solver: 'forceAtlas2Based',
+              forceAtlas2Based: {
+                gravitationalConstant: -100,
+                centralGravity: 0.01,
+                springLength: 200,
+                springConstant: 0.08,
+                damping: 0.4,
+                avoidOverlap: 0.8
+              },
+              stabilization: {
+                enabled: true,
+                iterations: 1000,
+                updateInterval: 25
+              }
+            },
+            layout: {
+              improvedLayout: true,
+              randomSeed: 42 // 固定种子使得每次布局相似
+            }
+          };
+          
+          // 创建网络 - 确保容器元素已经存在且可用
+          const container = this.$refs.networkContainer;
+          if (!container) {
+            throw new Error('网络容器元素不存在');
+          }
+          
+          // 确保容器高度
+          if (container.clientHeight === 0) {
+            container.style.height = '500px';
+          }
+          
+          this.network = new Network(
+            container,
+            { nodes: this.nodes, edges: this.edges },
+            options
+          );
+          
+          // 添加网络事件
+          this.network.on('click', (params) => {
+            if (params.nodes.length > 0) {
+              const nodeId = params.nodes[0];
+              const node = this.nodes.get(nodeId);
+              console.log('点击了节点:', node);
+              // 这里可以添加节点详情展示
+            }
+          });
+          
+          // 添加双击事件，展开相关节点
+          this.network.on('doubleClick', (params) => {
+            if (params.nodes.length > 0) {
+              const nodeId = params.nodes[0];
+              // 这里可以添加加载节点关联节点的逻辑
+              console.log('双击节点:', nodeId);
+            }
+          });
+        } catch (error) {
+          console.error('渲染网络可视化失败:', error);
+          this.error = '渲染可视化失败: ' + error.message;
+          this.hasData = false;
+        }
+      });
     },
     
     generateNodeTooltip(node) {
@@ -209,8 +306,13 @@ export default {
       tooltip += `<div class="tooltip-header">${node.label}</div>`;
       tooltip += `<div class="tooltip-content">`;
       
-      Object.entries(node.properties).forEach(([key, value]) => {
-        if (value && String(value).length < 100) { // 避免过长的文本
+      // 由于API返回的节点数据没有properties，直接显示节点ID和标签
+      tooltip += `<div class="tooltip-row"><span>ID:</span> ${node.id}</div>`;
+      tooltip += `<div class="tooltip-row"><span>标签:</span> ${node.label}</div>`;
+      
+      // 如果节点有其他属性，也可以显示
+      Object.entries(node).forEach(([key, value]) => {
+        if (key !== 'id' && key !== 'label' && value && String(value).length < 100) {
           tooltip += `<div class="tooltip-row"><span>${key}:</span> ${value}</div>`;
         }
       });

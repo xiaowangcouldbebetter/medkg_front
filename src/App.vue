@@ -11,7 +11,6 @@ import { ElMessage } from 'element-plus';
 export default {
   name: 'App',
   created() {
-    // 暂时禁用复杂的路由守卫
     
     this.$router.beforeEach((to, from, next) => {
       // 检查路由是否需要认证

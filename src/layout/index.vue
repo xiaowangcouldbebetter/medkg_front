@@ -1,79 +1,117 @@
 <template>
   <!-- 项目主界面 -->
-  <div class="common-layout">
+  <div class="app-container">
     <el-container>
       <!-- 主界面的标题栏 -->
-      <el-header style="background-color: #409eff;height: 80px;">
-        <el-row>
-          <el-col :span="4">
-            <div class="home-title" />
-            <span class="title-text">智能诊疗</span>
-          </el-col>
-          <el-col :span="1">
-            <div class="home-title-ic" /><el-icon class="home-title-icon" color="black">
-              <Fold />
-            </el-icon>
-          </el-col>
-          <el-col :span="15">
-            <div class="grid-content ep-bg-purple-dark" />
-          </el-col>
-
-          <!-- 头像 -->
-          <el-col :span="2" style="margin-top: 10px;">
-            <el-avatar :size="50" icon="el-icon-user-solid" :src="userAvatar" />
-          </el-col>
-
-          <!-- 下拉列表 -->
-          <el-col :span="2">
-            <div class="home-title-dropdown" />
-            <el-dropdown style="margin-top: 10px;">
-              <el-button type="primary" style="width: auto; min-width: 80px; height: 30px; margin: 10px;">
-                {{ userName || '用户' }}
-              </el-button>
-              <template #dropdown>
-                <el-dropdown-menu>
-                  <el-dropdown-item @click="showUserInfo">用户信息</el-dropdown-item>
-                  <el-dropdown-item v-if="isAdmin">管理面板</el-dropdown-item>
-                  <el-dropdown-item divided @click="handleLogout">退出登录</el-dropdown-item>
-                </el-dropdown-menu>
-              </template>
-            </el-dropdown>
-          </el-col>
-        </el-row>
+      <el-header class="app-header">
+        <div class="logo-container">
+          <div class="logo-icon"></div>
+          <span class="logo-text">医疗知识图谱智能问答系统</span>
+        </div>
+        
+        <div class="header-right">
+          <!-- 搜索框 -->
+          <el-input
+            v-model="searchQuery"
+            placeholder="搜索..."
+            prefix-icon="Search"
+            class="header-search"
+            clearable
+            @keyup.enter="handleSearch"
+          />
+          
+          <!-- 通知图标 -->
+          <el-badge :value="3" class="notification-badge">
+            <el-icon class="header-icon"><Bell /></el-icon>
+          </el-badge>
+          
+          <!-- 用户头像和下拉菜单 -->
+          <el-dropdown trigger="click" class="user-dropdown">
+            <div class="user-info">
+              <el-avatar :size="40" :src="userAvatar">{{ userAvatarText }}</el-avatar>
+              <span class="username">{{ userName || '用户' }}</span>
+              <el-icon><ArrowDown /></el-icon>
+            </div>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item @click="showUserInfo">
+                  <el-icon><User /></el-icon>个人信息
+                </el-dropdown-item>
+                <el-dropdown-item v-if="isAdmin" @click="navigateToAdmin">
+                  <el-icon><Setting /></el-icon>管理面板
+                </el-dropdown-item>
+                <el-dropdown-item @click="showFeedbackDialog">
+                  <el-icon><ChatDotRound /></el-icon>问题反馈
+                </el-dropdown-item>
+                <el-dropdown-item divided @click="handleLogout">
+                  <el-icon><SwitchButton /></el-icon>退出登录
+                </el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
+        </div>
       </el-header>
 
       <!-- 主界面的内容区域 -->
-      <el-container style="height: 900px;">
-        <el-aside style="background-color: lightblue;" width="240px">
-
-          <!---添加菜单栏-->
-          <el-menu defult-active="1" class="el-menu-popper-demo" style="max-width: 600px" router>
-
-            <!-- 遍历 menulist 数组，为每个元素创建一个 el-sub-menu 组件 -->
-
-            <template v-for="(item, index) in this.menulist" :key="index">
-              <template v-if="item.hidden != true">
+      <el-container class="main-container">
+        <!-- 侧边栏 -->
+        <el-aside width="240px" class="sidebar">
+          <el-menu 
+            :default-active="activeMenu" 
+            class="sidebar-menu"
+            :collapse="isCollapse"
+            router
+            unique-opened
+          >
+            <template v-for="(item, index) in menulist" :key="index">
+              <template v-if="item.hidden !== true">
                 <el-sub-menu :index="'' + index">
-                  <!-- 修改此处的代码，在<span>中添加一个变量，此变量根据index.js中的图标的变量 -->
-                  <template #title><el-icon style="color: #409eff;">
-                      <component :is="item.icon" />
-                    </el-icon>
+                  <template #title>
+                    <el-icon><component :is="item.icon" /></el-icon>
                     <span>{{ item.name }}</span>
                   </template>
 
-                  <el-menu-item :index="child.path" v-for="child in item['children']">
+                  <el-menu-item 
+                    v-for="child in item.children" 
+                    :key="child.path" 
+                    :index="child.path"
+                  >
+                    <el-icon v-if="child.icon"><component :is="child.icon" /></el-icon>
                     <span>{{ child.name }}</span>
                   </el-menu-item>
                 </el-sub-menu>
               </template>
             </template>
           </el-menu>
+          
+          <!-- 折叠按钮 -->
+          <div class="collapse-btn" @click="toggleSidebar">
+            <el-icon v-if="isCollapse"><Expand /></el-icon>
+            <el-icon v-else><Fold /></el-icon>
+          </div>
         </el-aside>
 
-        <el-main style="background-color: aliceblue;">
-          <router-view />
+        <!-- 主内容区域 -->
+        <el-main class="main-content">
+          <!-- 面包屑导航 -->
+          <div class="breadcrumb-container">
+            <el-breadcrumb separator="/">
+              <el-breadcrumb-item :to="{ path: '/' }">首页</el-breadcrumb-item>
+              <el-breadcrumb-item v-for="(item, index) in breadcrumbs" :key="index">
+                {{ item }}
+              </el-breadcrumb-item>
+            </el-breadcrumb>
+          </div>
+          
+          <!-- 页面内容 -->
+          <div class="page-container">
+            <router-view v-slot="{ Component }">
+              <transition name="fade" mode="out-in">
+                <component :is="Component" />
+              </transition>
+            </router-view>
+          </div>
         </el-main>
-
       </el-container>
     </el-container>
     
@@ -81,11 +119,11 @@
     <el-dialog 
       v-model="userInfoDialogVisible" 
       title="用户信息" 
-      width="30%"
+      width="400px"
       :before-close="handleCloseDialog"
     >
       <div class="user-info-container">
-        <el-avatar :size="80" icon="el-icon-user-solid" :src="userAvatar" class="user-avatar" />
+        <el-avatar :size="80" :src="userAvatar" class="user-avatar">{{ userAvatarText }}</el-avatar>
         <div class="user-details">
           <p><strong>用户名:</strong> {{ userName }}</p>
           <p><strong>邮箱:</strong> {{ userEmail }}</p>
@@ -96,6 +134,41 @@
       <template #footer>
         <span class="dialog-footer">
           <el-button @click="userInfoDialogVisible = false">关闭</el-button>
+          <el-button type="primary" @click="editUserInfo">编辑</el-button>
+        </span>
+      </template>
+    </el-dialog>
+    
+    <!-- 问题反馈对话框 -->
+    <el-dialog
+      v-model="feedbackDialogVisible"
+      title="问题反馈"
+      width="500px"
+    >
+      <el-form :model="feedbackForm" label-width="80px" :rules="feedbackRules" ref="feedbackFormRef">
+        <el-form-item label="标题" prop="title">
+          <el-input v-model="feedbackForm.title" placeholder="请输入反馈标题"></el-input>
+        </el-form-item>
+        <el-form-item label="类型" prop="type">
+          <el-select v-model="feedbackForm.type" placeholder="请选择反馈类型" style="width: 100%">
+            <el-option label="系统错误" value="bug"></el-option>
+            <el-option label="功能建议" value="suggestion"></el-option>
+            <el-option label="其他" value="other"></el-option>
+          </el-select>
+        </el-form-item>
+        <el-form-item label="内容" prop="content">
+          <el-input 
+            v-model="feedbackForm.content" 
+            type="textarea" 
+            rows="5" 
+            placeholder="请详细描述您遇到的问题或建议..."
+          ></el-input>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="feedbackDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="submitFeedback">提交</el-button>
         </span>
       </template>
     </el-dialog>
@@ -122,7 +195,7 @@ export default {
         }
       ).then(() => {
         // 调用后端退出登录接口
-        axios.post(`${apiConfig.API_BASE_URL}${apiConfig.endpoints.logout}`, {}, {
+        axios.post(`${apiConfig.endpoints.logout}`, {}, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('userToken')}`
           }
@@ -159,7 +232,7 @@ export default {
     // 显示用户信息对话框
     showUserInfo() {
       // 尝试从后端获取最新用户信息
-      axios.get(`${apiConfig.API_BASE_URL}${apiConfig.endpoints.userInfo}`)
+      axios.get(`${apiConfig.endpoints.userInfo}`)
         .then(response => {
           if (response.data.code === 0) {
             const userData = response.data.data;
@@ -173,6 +246,9 @@ export default {
             localStorage.setItem('userEmail', userData.email);
             localStorage.setItem('userType', userData.userType);
             localStorage.setItem('lastLogin', userData.lastLogin);
+            
+            // 更新头像文本
+            this.updateAvatarText();
           }
         })
         .catch(error => {
@@ -203,10 +279,100 @@ export default {
       this.lastLogin = localStorage.getItem('lastLogin') || '';
       this.isAdmin = this.userType === 'admin';
       
-      // 生成用户头像
+      // 更新头像文本
+      this.updateAvatarText();
+    },
+    
+    // 更新头像文本
+    updateAvatarText() {
       if (this.userName) {
-        // 使用首字母作为头像
-        this.userAvatar = '';
+        this.userAvatarText = this.userName.charAt(0).toUpperCase();
+      } else {
+        this.userAvatarText = 'U';
+      }
+    },
+    
+    // 切换侧边栏折叠状态
+    toggleSidebar() {
+      this.isCollapse = !this.isCollapse;
+    },
+    
+    // 跳转到管理面板
+    navigateToAdmin() {
+      if (this.isAdmin) {
+        this.$router.push('/admin');
+      } else {
+        ElMessage.warning('只有管理员才能访问管理面板');
+      }
+    },
+    
+    // 处理搜索
+    handleSearch() {
+      if (this.searchQuery.trim()) {
+        ElMessage.info(`搜索: ${this.searchQuery}`);
+        // 实现搜索功能
+      }
+    },
+    
+    // 显示反馈对话框
+    showFeedbackDialog() {
+      this.feedbackDialogVisible = true;
+    },
+    
+    // 提交反馈
+    submitFeedback() {
+      this.$refs.feedbackFormRef.validate((valid) => {
+        if (valid) {
+          // 获取用户ID
+          const userId = localStorage.getItem('userId');
+          
+          // 准备提交的数据
+          const feedbackData = {
+            ...this.feedbackForm,
+            user_id: userId
+          };
+          
+          // 发送请求
+          axios.post(`/user/feedback/`, feedbackData)
+            .then(response => {
+              if (response.data.success) {
+                ElMessage.success('反馈提交成功，感谢您的建议！');
+                this.feedbackDialogVisible = false;
+                // 重置表单
+                this.feedbackForm = {
+                  title: '',
+                  type: 'bug',
+                  content: ''
+                };
+              } else {
+                ElMessage.error(response.data.message || '提交失败');
+              }
+            })
+            .catch(error => {
+              console.error('提交反馈失败:', error);
+              ElMessage.error('提交反馈失败，请稍后再试');
+            });
+        } else {
+          return false;
+        }
+      });
+    },
+    
+    // 编辑用户信息
+    editUserInfo() {
+      ElMessage.info('编辑用户信息功能正在开发中...');
+    },
+    
+    // 更新面包屑
+    updateBreadcrumbs() {
+      // 根据当前路由生成面包屑
+      const currentRoute = this.$route;
+      this.breadcrumbs = [];
+      
+      if (currentRoute.meta && currentRoute.meta.title) {
+        this.breadcrumbs.push(currentRoute.meta.title);
+      } else if (currentRoute.name) {
+        this.breadcrumbs.push(currentRoute.name);
       }
     }
   },
@@ -216,6 +382,21 @@ export default {
     
     // 获取用户信息
     this.getUserInfo();
+    
+    // 设置当前活动菜单
+    this.activeMenu = this.$route.path;
+    
+    // 初始化面包屑
+    this.updateBreadcrumbs();
+  },
+  watch: {
+    $route(to) {
+      // 更新活动菜单
+      this.activeMenu = to.path;
+      
+      // 更新面包屑
+      this.updateBreadcrumbs();
+    }
   },
   data() {
     return {
@@ -226,7 +407,31 @@ export default {
       isAdmin: false,
       lastLogin: '',
       userAvatar: '',
-      userInfoDialogVisible: false
+      userAvatarText: 'U',
+      userInfoDialogVisible: false,
+      isCollapse: false,
+      activeMenu: '/',
+      breadcrumbs: [],
+      searchQuery: '',
+      feedbackDialogVisible: false,
+      feedbackForm: {
+        title: '',
+        type: 'bug',
+        content: ''
+      },
+      feedbackRules: {
+        title: [
+          { required: true, message: '请输入反馈标题', trigger: 'blur' },
+          { min: 3, max: 100, message: '标题长度在3到100个字符之间', trigger: 'blur' }
+        ],
+        type: [
+          { required: true, message: '请选择反馈类型', trigger: 'change' }
+        ],
+        content: [
+          { required: true, message: '请输入反馈内容', trigger: 'blur' },
+          { min: 10, max: 500, message: '内容长度在10到500个字符之间', trigger: 'blur' }
+        ]
+      }
     }
   },
 }
@@ -234,26 +439,136 @@ export default {
 
 
 <style scoped>
-.home-title {
-  font-size: 24px;
-  font-weight: bold;
-  margin-top: 10px;
-  color: rgb(24, 22, 22);
+/* 全局容器样式 */
+.app-container {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
-.title-text {
-  font-size: 24px;
-  font-weight: bold;
-  margin-top: 10px;
-  color: rgb(255, 255, 255);
-  text-shadow: 2px 2px 4px #000000;
-}
-
-.home-title-icon {
-  font-size: 50px;
+/* 头部样式 */
+.app-header {
+  background: linear-gradient(135deg, #42b983 0%, #3398db 100%);
   color: white;
+  padding: 0 20px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.logo-container {
+  display: flex;
+  align-items: center;
+}
+
+.logo-text {
+  font-size: 20px;
   font-weight: bold;
-  padding: 5px;
+  margin-left: 10px;
+  color: white;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.header-search {
+  width: 200px;
+}
+
+.header-icon {
+  font-size: 20px;
+  cursor: pointer;
+  color: white;
+}
+
+.notification-badge {
+  margin-right: 10px;
+}
+
+.user-dropdown {
+  cursor: pointer;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.username {
+  font-size: 14px;
+  color: white;
+}
+
+/* 主内容区域样式 */
+.main-container {
+  flex: 1;
+  overflow: hidden;
+}
+
+/* 侧边栏样式 */
+.sidebar {
+  background-color: #f8f9fa;
+  border-right: 1px solid #e9ecef;
+  transition: width 0.3s;
+  position: relative;
+}
+
+.sidebar-menu {
+  height: calc(100% - 40px);
+  border-right: none;
+}
+
+.collapse-btn {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f0f2f5;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: background-color 0.3s;
+}
+
+.collapse-btn:hover {
+  background-color: #e6e8eb;
+}
+
+/* 主内容区域样式 */
+.main-content {
+  background-color: #f5f7fa;
+  padding: 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.breadcrumb-container {
+  margin-bottom: 20px;
+  padding: 10px;
+  background-color: white;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.page-container {
+  flex: 1;
+  background-color: white;
+  border-radius: 4px;
+  padding: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 /* 用户信息对话框样式 */
@@ -270,11 +585,23 @@ export default {
 
 .user-details {
   width: 100%;
+  background-color: #f5f7fa;
+  padding: 15px;
+  border-radius: 4px;
 }
 
 .user-details p {
   margin: 10px 0;
-  padding: 8px;
-  border-bottom: 1px solid #eee;
+}
+
+/* 过渡效果 */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 </style>

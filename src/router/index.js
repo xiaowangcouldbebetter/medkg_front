@@ -84,7 +84,6 @@ router.beforeEach((to, from, next) => {
   }
 });
 
-
 // 简化的导航守卫
 router.beforeEach((to, from, next) => {
   next(); // 允许所有访问

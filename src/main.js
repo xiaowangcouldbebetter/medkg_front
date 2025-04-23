@@ -28,6 +28,37 @@ axios.interceptors.request.use(
   }
 );
 
+// 添加响应拦截器
+axios.interceptors.response.use(
+  response => {
+    return response;
+  },
+  error => {
+    if (error.response) {
+      // 处理401错误（未授权）
+      if (error.response.status === 401) {
+        // 判断是管理员请求还是普通用户请求
+        const isAdminRequest = error.config.url.includes('/admin/');
+        
+        if (isAdminRequest) {
+          // 清除管理员token并跳转到管理员登录页
+          localStorage.removeItem('adminToken');
+          if (router.currentRoute.value.meta.requiresAdminAuth) {
+            router.push('/admin/login');
+          }
+        } else {
+          // 清除用户token并跳转到登录页
+          localStorage.removeItem('token');
+          if (router.currentRoute.value.meta.requiresAuth) {
+            router.push('/login');
+          }
+        }
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 const app = createApp(App);
 app.use(store);
 app.use(router);

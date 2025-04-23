@@ -144,7 +144,7 @@ export default {
       this.showResult = false;
       
       try {
-        const response = await axios.post('/kg/update/', {
+        const response = await axios.post('/api/kg/update/', {
           source_url: this.sourceUrl,
           data_type: this.dataType
         });
